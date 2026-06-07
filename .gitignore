@@ -1,0 +1,26 @@
+# ローカル環境変数
+.env
+.env.local
+.env*.local
+
+# OS・エディタ
+.DS_Store
+Thumbs.db
+
+# ユーザーが各自取得する入力データ（リポジトリ非同梱）
+data/input/廣韻.csv
+data/input/宋本廣韻データ.html
+*.xml
+
+# バックアップファイル（スクリプトが自動生成）
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+my_venv/
+work/
+
