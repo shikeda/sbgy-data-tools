@@ -29,6 +29,9 @@ dhsjr_summary.py  —  DHSJR TSV 資料性格サマリー
   # フォーマット選択: text（デフォルト）/ tsv / json
   python dhsjr_summary.py --dir path/to/DHSJR/data/ --format tsv --outdir ./summary_out/
 
+  # 基本統計のみ出力
+  python dhsjr_summary.py path/to/20-001-01_DHN.tsv --basic-only
+
 Python 3.9 以上。標準ライブラリのみ使用。
 """
 
@@ -220,7 +223,21 @@ def summarize(rows: list[dict[str, str]]) -> dict:
 # 出力フォーマット
 # ---------------------------------------------------------------------------
 
-def render_text(resource_id: str, name: str, stats: dict) -> str:
+def basic_stats(stats: dict) -> dict:
+    """基本統計だけを取り出した辞書を返す。"""
+    keys = [
+        "total_rows",
+        "kana_present",
+        "kana_rate",
+        "tone_present",
+        "tone_rate",
+        "fanqie_present",
+        "ruion_present",
+    ]
+    return {k: stats[k] for k in keys}
+
+
+def render_text(resource_id: str, name: str, stats: dict, *, basic_only: bool = False) -> str:
     lines: list[str] = []
     sep = "=" * 60
 
@@ -236,9 +253,12 @@ def render_text(resource_id: str, name: str, stats: dict) -> str:
         f"  声点あり        : {stats['tone_present']} ({stats['tone_rate']}%)",
         f"  反切あり        : {stats['fanqie_present']}",
         f"  類音あり        : {stats['ruion_present']}",
-        "",
-        "【声点分布】",
     ]
+    if basic_only:
+        lines.append("")
+        return "\n".join(lines)
+
+    lines += ["", "【声点分布】"]
     for label, cnt in stats["tone_distribution"].items():
         lines.append(f"  {label:<10} {cnt:>5}")
 
@@ -264,7 +284,7 @@ def render_text(resource_id: str, name: str, stats: dict) -> str:
     return "\n".join(lines)
 
 
-def render_tsv_lines(resource_id: str, name: str, stats: dict) -> list[list[str]]:
+def render_tsv_lines(resource_id: str, name: str, stats: dict, *, basic_only: bool = False) -> list[list[str]]:
     rows: list[list[str]] = []
     base = [resource_id, name]
 
@@ -275,6 +295,9 @@ def render_tsv_lines(resource_id: str, name: str, stats: dict) -> list[list[str]
     rows.append(base + ["基本", "声点率(%)", str(stats["tone_rate"])])
     rows.append(base + ["基本", "反切あり", str(stats["fanqie_present"])])
     rows.append(base + ["基本", "類音あり", str(stats["ruion_present"])])
+
+    if basic_only:
+        return rows
 
     for label, cnt in stats["tone_distribution"].items():
         rows.append(base + ["声点分布", label, str(cnt)])
@@ -337,6 +360,10 @@ def main() -> None:
         "--format", choices=["text", "tsv", "json"], default="text",
         help="出力フォーマット（デフォルト: text）"
     )
+    parser.add_argument(
+        "--basic-only", action="store_true",
+        help="基本統計（総行数・仮名注あり・声点あり・反切あり・類音あり）のみ出力する"
+    )
     args = parser.parse_args()
 
     targets = collect_targets(args)
@@ -358,7 +385,7 @@ def main() -> None:
             continue
 
         if args.format == "text":
-            content = render_text(resource_id, name, stats)
+            content = render_text(resource_id, name, stats, basic_only=args.basic_only)
             if outdir:
                 out_path = outdir / f"{path.stem}_summary.txt"
                 write_text(out_path, content)
@@ -366,13 +393,13 @@ def main() -> None:
                 print(content)
 
         elif args.format == "tsv":
-            tsv_all.extend(render_tsv_lines(resource_id, name, stats))
+            tsv_all.extend(render_tsv_lines(resource_id, name, stats, basic_only=args.basic_only))
 
         elif args.format == "json":
             json_all.append({
                 "resource_id": resource_id,
                 "name": name,
-                "stats": stats,
+                "stats": basic_stats(stats) if args.basic_only else stats,
             })
 
     # TSV / JSON は最後にまとめて出力

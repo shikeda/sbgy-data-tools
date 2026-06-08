@@ -286,6 +286,14 @@ python3 scripts/dhsjr_summary.py \
   --outdir data/output/dhsjr_summary
 ```
 
+基本統計のみ出力:
+
+```bash
+python3 scripts/dhsjr_summary.py \
+  path/to/30-001-01.tsv \
+  --basic-only
+```
+
 出力:
 
 - `--outdir` なしの場合は標準出力
