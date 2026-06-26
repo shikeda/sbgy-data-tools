@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Project Name: Link DHSJR/KRM TSV Entries with Guangyun Phonological Data
-Copyright (c) 2026 Shoju Ikeda
-Released under the MIT license
-https://opensource.org/licenses/mit-license.php
-
 gy_dhsjr_link.py  —  廣韻 × DHSJR 接続スクリプト
 
 DHSJR TSV の `単字_見出し` を廣韻.csv の音韻地位に接続し、
@@ -50,7 +44,10 @@ DHSJR TSV の `単字_見出し` を廣韻.csv の音韻地位に接続し、
 --entry-col のデフォルトは「単字_見出し」（DHSJR標準）。
 --tone-col のデフォルトは「声点」（DHSJR標準）。声調列がない場合は複数音の絞り込みをスキップする。
 --itaiji は異体字TSV（NIHUテーブル等）のパス。複数ファイルをカンマ区切りで指定可能。
---itaiji-json は異体字JSON（{"新字":["旧字1","旧字2",...]}形式）のパス。
+--itaiji-json は異体字JSON（{"字A":"字B"} や {"字A":["字B","字C"]}、
+または [{"c1":"字A","c2":"字B"}] 形式のペアリスト）のパス。
+「新字・旧字」のような方向の区別は不要で、廣韻に収録されている側が
+自動的に正規化先として選ばれる。
 異体字正規化を行う場合、元の字形を GY_正規化前 列に記録する。
 
 Python 3.9 以上。標準ライブラリのみ使用。
@@ -76,12 +73,6 @@ SGY_fanqie.csv の主要フィールド:
 本スクリプトでは声母行（ハ行系など）と韻摂音形を別々に付与し、
 合成予測形は付与しない（組み合わせの多対多性のため）。
 照合判定は別スクリプト（今後作成）で行う。
-
-注意:
-  GY_漢音韻母形 / GY_呉音韻母形 は概略的な候補形であり、
-  現行実装では入声字でも非入声韻の形で表示される場合がある。
-  入声字は GY_声調=入 と GY_韻目原貌 を確認し、必要に応じて
-  フ・ツ/チ・ク/キ 系に読み替えること。
 """
 
 from __future__ import annotations
@@ -376,8 +367,7 @@ def build_sgy_index(sgy_path: Path) -> dict[str, list[dict]]:
     """
     index: dict[str, list[dict]] = defaultdict(list)
     with sgy_path.open("r", encoding="utf-8-sig") as fh:
-        data_lines = (line for line in fh if line.strip() and not line.lstrip().startswith("#"))
-        for row in csv.DictReader(data_lines):
+        for row in csv.DictReader(fh):
             hanzi = row["hanzi"].strip()
             if not hanzi:
                 continue
@@ -409,8 +399,10 @@ def build_itaiji_map(
       - 等価グループ内で廣韻にある字を代表字（正規化先）とする。
       - 廣韻にある字が複数ある場合は最初の字を採用する。
       - 廣韻にある字が1つもないグループは対象外。
-      - JSON形式: {"新字": "旧字"} または {"新字": ["旧字1", "旧字2"]}
-        いずれの方向でも廣韻にある字を代表字とする。
+      - JSON形式: {"字A": "字B"} または {"字A": ["字B", "字C"]} または
+                  [{"c1": "字A", "c2": "字B"}, ...]（ペアリスト形式）
+        いずれもキー・バリューや c1/c2 の方向に意味はなく、
+        グループ内で廣韻にある字を代表字とする。
 
     Args:
         nihu_paths: NIHUテーブル形式TSVのパスリスト
