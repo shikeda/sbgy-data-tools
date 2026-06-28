@@ -293,6 +293,11 @@ YYQD_PAT = re.compile(
     r"(平|上|去|入)$"  # 声調
 )
 
+# 廣韻.csv の補字（附音字）検出パターン
+# 小韻字號が "1a1" のような \d+a\d+ 形式の行は sbgy.xml では added_word として扱われる
+_SUPPLEMENTARY_JIGO_PAT = re.compile(r'^\d+a\d+$')
+_BRACKET_HANZI_PAT = re.compile(r'^［(.+)］$')  # 補字の字頭表記: ［嬹］ → 嬹
+
 
 def parse_yyqd(yyqd: str) -> dict[str, str] | None:
     """廣韻の音韻地位文字列を分解して辞書を返す。"""
@@ -339,6 +344,11 @@ def build_gy_index(gy_path: Path) -> dict[str, list[dict]]:
     """
     廣韻.csv を読み込み、字頭をキーとした辞書を返す。
     1字が複数音を持つ場合はリストに複数要素が入る。
+
+    小韻字號が "1a1" のような \\d+a\\d+ 形式の補字（sbgy.xml では added_word）は、
+    字頭の ［○］ 括弧を除去して通常エントリと同様にインデックス登録する。
+    小韻字號の値（"1a1" 等）は parsed["小韻字號"] に保持されるため、
+    GY_小韻字號 列でその性質を確認できる。
     """
     index: dict[str, list[dict]] = defaultdict(list)
     with gy_path.open("r", encoding="utf-8-sig") as fh:
@@ -346,12 +356,20 @@ def build_gy_index(gy_path: Path) -> dict[str, list[dict]]:
             hanzi = row["字頭"].strip()
             if not hanzi:
                 continue
+            koshu_jigo = row.get("小韻字號", "").strip()
+            if _SUPPLEMENTARY_JIGO_PAT.match(koshu_jigo):
+                # 補字: ［嬹］ → 嬹 に正規化
+                m = _BRACKET_HANZI_PAT.match(hanzi)
+                if not m:
+                    continue  # ［○］形式でない補字行は想定外のためスキップ
+                hanzi = m.group(1)
             parsed = parse_yyqd(row["音韻地位"])
             if parsed is None:
                 continue
-            parsed["反切"] = row["反切"]
+            parsed["反切"]   = row["反切"]
             parsed["韻目原貌"] = row["韻目原貌"]
-            parsed["小韻號"] = row["小韻號"]
+            parsed["小韻號"]  = row["小韻號"]
+            parsed["小韻字號"] = koshu_jigo
             index[hanzi].append(parsed)
     return dict(index)
 
@@ -505,7 +523,7 @@ LINKED_EXTRA_FIELDS = [
     "GY_声母", "GY_清濁", "GY_等", "GY_等区分", "GY_開合",
     "GY_重紐", "GY_韻", "GY_摂", "GY_声調",
     "GY_漢音行", "GY_呉音行", "GY_漢音韻母形", "GY_呉音韻母形",
-    "GY_反切", "GY_韻目原貌", "GY_小韻號",
+    "GY_反切", "GY_韻目原貌", "GY_小韻號", "GY_小韻字號",
     "GY_マッチ状況",
     "GY_正規化前",   # 異体字正規化が行われた場合に元の字形を記録
     "SGY_声母", "SGY_声母等", "SGY_清濁", "SGY_摂開合等", "SGY_韻ID", "SGY_反切",
@@ -606,6 +624,7 @@ def _fill_gy(out: dict, entry: dict) -> None:
     out["GY_反切"]       = entry["反切"]
     out["GY_韻目原貌"]   = entry["韻目原貌"]
     out["GY_小韻號"]     = entry["小韻號"]
+    out["GY_小韻字號"]   = entry.get("小韻字號", "")
 
 
 TONE_LABEL_MAP = {
