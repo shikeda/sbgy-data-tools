@@ -769,9 +769,9 @@ def main() -> None:
 
         # 未収録・複数音を収集
         mat_field = "GY_マッチ状況"
-        resource_id = linked_rows[0].get("資料番号", path.stem) if linked_rows else path.stem
         for r in linked_rows:
             status = r.get(mat_field, "")
+            resource_id = r.get("資料番号", path.stem)
             base = {"資料番号": resource_id, "単字_見出し": r.get(entry_col, "")}
             if status == MATCH_NONE:
                 all_unmatched.append(base)
