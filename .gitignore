@@ -24,3 +24,9 @@ venv/
 my_venv/
 work/
 
+# 中間生成物
+
+data/input/30-048-02_RMK.tsv
+data/input/krm_pronunciations.tsv
+linked_out/
+
