@@ -11,6 +11,7 @@ Thumbs.db
 data/input/廣韻.csv
 data/input/宋本廣韻データ.html
 *.xml
+data/input/SGY_fanqie.csv
 
 # バックアップファイル（スクリプトが自動生成）
 *.bak
