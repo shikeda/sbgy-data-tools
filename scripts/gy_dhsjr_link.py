@@ -59,7 +59,7 @@ Python 3.9 以上。標準ライブラリのみ使用。
   例: 端一東平 / 章開三支平 / 見三C東平
 
 SGY_fanqie.csv の主要フィールド:
-  hanzi, shengmu, shengmu_deng, she_kaihe_deng, qingzhuo, rhyme_id, tone_volume_code
+  hanzi, shengmu, shengmu_deng, qingzhuo, fanqie
 
 音韻地位の6次元:
   1. 声母 (shengmu)
@@ -397,11 +397,13 @@ def build_gy_index(gy_path: Path) -> dict[str, list[dict]]:
 def build_sgy_index(sgy_path: Path) -> dict[str, list[dict]]:
     """
     SGY_fanqie.csv を読み込み、字頭をキーとした辞書を返す。
-    SGY は廣韻より詳細な she_kaihe_deng・shengmu_deng を持つ。
+    SGY は廣韻より詳細な shengmu_deng（声母等）を持つ。
+    冒頭の # で始まるコメント行はスキップする。
     """
     index: dict[str, list[dict]] = defaultdict(list)
-    with sgy_path.open("r", encoding="utf-8-sig") as fh:
-        for row in csv.DictReader(fh):
+    with sgy_path.open("r", encoding="utf-8-sig", newline="") as fh:
+        data_lines = [line for line in fh if not line.startswith("#")]
+        for row in csv.DictReader(data_lines):
             hanzi = row["hanzi"].strip()
             if not hanzi:
                 continue
@@ -409,8 +411,6 @@ def build_sgy_index(sgy_path: Path) -> dict[str, list[dict]]:
                 "SGY_声母": row["shengmu"],
                 "SGY_声母等": row["shengmu_deng"],
                 "SGY_清濁": row["qingzhuo"],
-                "SGY_摂開合等": row["she_kaihe_deng"],
-                "SGY_韻ID": row["rhyme_id"],
                 "SGY_反切": row["fanqie"],
             })
     return dict(index)
@@ -542,7 +542,7 @@ LINKED_EXTRA_FIELDS = [
     "GY_反切", "GY_韻目原貌", "GY_小韻號", "GY_小韻字號",
     "GY_マッチ状況",
     "GY_正規化前",   # 異体字正規化が行われた場合に元の字形を記録
-    "SGY_声母", "SGY_声母等", "SGY_清濁", "SGY_摂開合等", "SGY_韻ID", "SGY_反切",
+    "SGY_声母", "SGY_声母等", "SGY_清濁", "SGY_反切",
 ]
 
 MATCH_UNIQUE   = "一意"
@@ -616,8 +616,6 @@ def link_row(
             out["SGY_声母"]    = s["SGY_声母"]
             out["SGY_声母等"]  = s["SGY_声母等"]
             out["SGY_清濁"]    = s["SGY_清濁"]
-            out["SGY_摂開合等"] = s["SGY_摂開合等"]
-            out["SGY_韻ID"]   = s["SGY_韻ID"]
             out["SGY_反切"]   = s["SGY_反切"]
 
     return out
